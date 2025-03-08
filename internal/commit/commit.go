@@ -1,0 +1,65 @@
+package commit
+
+import (
+	"fmt"
+	"regexp"
+
+	"github.com/Supkaa/release/internal/conventional/types"
+)
+
+type Commit struct {
+	Type    types.CommitType
+	Scope   string
+	Message string
+	IsMerge bool
+}
+
+func New(commit string) Commit {
+	return Commit{
+		Type:    parseType(commit),
+		Scope:   parseScope(commit),
+		IsMerge: parseIsMerge(commit),
+	}
+}
+
+func (c Commit) String() string {
+	str := ""
+	if c.Type != "" {
+		str = fmt.Sprintf("%s: ", c.Type)
+	}
+
+	if c.Scope != "" && str != "" {
+		str = fmt.Sprintf("%s(%s): ", c.Type, c.Scope)
+	}
+
+	if c.Message != "" {
+		str = str + c.Message
+	}
+
+	return str
+}
+
+func parseType(commit string) types.CommitType {
+	matches := regexp.
+		MustCompile(`([\w\s]+)[:(]`).
+		FindString(commit)
+
+	if len(matches) > 2 {
+		return matches[:len(matches)-1]
+	}
+	return matches
+}
+
+func parseIsMerge(commit string) bool {
+	return regexp.
+		MustCompile(`(?i)^merge`).
+		MatchString(commit)
+}
+
+func parseScope(commit string) string {
+	return ""
+}
+
+func parseMessage(commit string) string {
+	return ""
+}

@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/Supkaa/release/internal/commit"
 	"github.com/Supkaa/release/internal/git"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +22,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(git.GetLatestTag())
+		fmt.Println(git.LintCommit(commit.New("feat: create GetLatestTag func")))
 	},
 }
 
