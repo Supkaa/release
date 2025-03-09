@@ -8,19 +8,27 @@ import (
 )
 
 type Commit struct {
-	Type    types.CommitType
-	Scope   string
-	Message string
-	IsMerge bool
+	Type      types.CommitType
+	Scope     string
+	Message   string
+	IsMerge   bool
+	IsInitial bool
 }
 
-func New(commit string) Commit {
-	return Commit{
-		Type:    parseType(commit),
-		Scope:   parseScope(commit),
-		Message: parseMessage(commit),
-		IsMerge: parseIsMerge(commit),
+func Parse(commit string) Commit {
+	newCommit := Commit{
+		IsMerge:   parseIsMerge(commit),
+		IsInitial: parseIsInitial(commit),
+		Message:   commit,
 	}
+
+	if !newCommit.IsMerge && !newCommit.IsInitial {
+		newCommit.Type = parseType(commit)
+		newCommit.Scope = parseScope(commit)
+		newCommit.Message = parseMessage(commit)
+	}
+
+	return newCommit
 }
 
 func (c Commit) String() string {
@@ -55,6 +63,10 @@ func parseIsMerge(commit string) bool {
 	return regexp.
 		MustCompile(`(?i)^merge`).
 		MatchString(commit)
+}
+
+func parseIsInitial(commit string) bool {
+	return commit == "Initial commit"
 }
 
 func parseScope(commit string) string {

@@ -34,9 +34,10 @@ to quickly create a Cobra application.`,
 
 		reader := bufio.NewReader(os.Stdin)
 		commit := commit.Commit{
-			IsMerge: false,
+			IsMerge:   false,
+			IsInitial: false,
 		}
-		commit.Type = selectCommitTypeommit(reader)
+		commit.Type = selectCommitType(reader)
 		commit.Scope = enterScope(reader)
 		commit.Message = enterShortDescription(reader)
 
@@ -62,7 +63,7 @@ func init() {
 	// commitgenCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func selectCommitTypeommit(reader *bufio.Reader) types.CommitType {
+func selectCommitType(reader *bufio.Reader) types.CommitType {
 	fmt.Println("Select commit type:")
 	for i, t := range types.ValidCommitTypes {
 		fmt.Printf("%d: %s\n", i+1, t)

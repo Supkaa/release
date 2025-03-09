@@ -19,7 +19,7 @@ var (
 )
 
 func LintCommit(commit commit.Commit) error {
-	if commit.IsMerge {
+	if commit.IsMerge || commit.IsInitial {
 		return nil
 	}
 

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/Supkaa/release/internal/commit"
+	"github.com/Supkaa/release/internal/tag"
 )
 
 func GetLatestCommit() (commit.Commit, error) {
@@ -20,10 +22,26 @@ func GetLatestCommit() (commit.Commit, error) {
 		return commit.Commit{}, fmt.Errorf("fail to get latest commit:%w", err)
 	}
 
-	return commit.New(string(stdout)), nil
+	return commit.Parse(string(stdout)), nil
 }
 
-func GetLatestTag() string {
+func GetLatestTag() tag.Tag {
+	cmd := exec.Command(
+		"git",
+		"describe",
+		"--tags",
+		`--abbrev=0`,
+	)
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Printf("fail to execute command: %s", err.Error())
+		return tag.Tag{}
+	}
+
+	return tag.Parse(string(stdout))
+}
+
+func GetAllCommits() []commit.Commit {
 	cmd := exec.Command(
 		"git",
 		"log",
@@ -33,10 +51,37 @@ func GetLatestTag() string {
 	stdout, err := cmd.Output()
 	if err != nil {
 		log.Printf("fail to execute command: %s", err.Error())
-		return ""
+		return []commit.Commit{}
 	}
 
-	return string(stdout)
+	return parseCommits(string(stdout))
+}
+
+func GetCommitsSinceTag(tag tag.Tag) []commit.Commit {
+	cmd := exec.Command(
+		"git",
+		"log",
+		fmt.Sprintf("%s..HEAD", tag.String()),
+		"--reverse",
+		`--pretty=format:%s`,
+	)
+	stdout, err := cmd.Output()
+	if err != nil {
+		log.Printf("fail to execute command: %s", err.Error())
+		return []commit.Commit{}
+	}
+
+	return parseCommits(string(stdout))
+}
+
+func parseCommits(commitsString string) []commit.Commit {
+	commitStrings := strings.Split(commitsString, "\n")
+	var commits []commit.Commit
+	for _, commitString := range commitStrings {
+		commits = append(commits, commit.Parse(commitString))
+	}
+
+	return commits
 }
 
 func IsGitAddExecuted() bool {
@@ -56,7 +101,7 @@ func Commit(commit commit.Commit) {
 		"git",
 		"commit",
 		"-m",
-		fmt.Sprintf(`%s`, commit.String()),
+		commit.String(),
 	)
 
 	if err := cmd.Run(); err != nil {
