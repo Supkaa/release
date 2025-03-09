@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	ErrCommitTypeIsNotProvided    = errors.New("commit type is not provided")
 	ErrInvalidCommitType          = errors.New("invalid commit type")
 	ErrCommitTypeCannotBeEmpty    = errors.New("commit type can`t be empty")
 	ErrInvalidCommitScope         = errors.New("invalid commit scope")
