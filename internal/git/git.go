@@ -38,3 +38,28 @@ func GetLatestTag() string {
 
 	return string(stdout)
 }
+
+func IsGitAddExecuted() bool {
+	cmd := exec.Command(
+		"git",
+		"diff",
+		"--cached",
+		"--exit-code",
+	)
+	err := cmd.Run()
+
+	return err != nil
+}
+
+func Commit(commit commit.Commit) {
+	cmd := exec.Command(
+		"git",
+		"commit",
+		"-m",
+		fmt.Sprintf(`'%s'`, commit.String()),
+	)
+
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("fail to execute command: %s", err.Error())
+	}
+}
