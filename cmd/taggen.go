@@ -28,12 +28,18 @@ to quickly create a Cobra application.`,
 		}
 
 		log.Print(newTag.String())
+
+		if dryRun, _ := cmd.Flags().GetBool("dry-run"); dryRun {
+			return
+		}
+
 		git.Tag(newTag)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(taggenCmd)
+	taggenCmd.Flags().BoolP("dry-run", "d", false, "Run without tagging")
 
 	// Here you will define your flags and configuration settings.
 

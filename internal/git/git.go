@@ -34,7 +34,6 @@ func GetLatestTag() tag.Tag {
 	)
 	stdout, err := cmd.Output()
 	if err != nil {
-		log.Printf("fail to execute command: %s", err.Error())
 		return tag.Tag{}
 	}
 
@@ -75,7 +74,12 @@ func GetCommitsSinceTag(tag tag.Tag) []commit.Commit {
 }
 
 func parseCommits(commitsString string) []commit.Commit {
+	if commitsString == "" {
+		return nil
+	}
+
 	commitStrings := strings.Split(commitsString, "\n")
+
 	var commits []commit.Commit
 	for _, commitString := range commitStrings {
 		commits = append(commits, commit.Parse(commitString))

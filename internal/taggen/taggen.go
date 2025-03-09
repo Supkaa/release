@@ -13,9 +13,13 @@ import (
 
 func GenerateTag() (tag.Tag, error) {
 	latestTag := git.GetLatestTag()
-
 	commits := getCommits(latestTag)
-	for _, commit := range getCommits(latestTag) {
+
+	if len(commits) == 0 {
+		return tag.Tag{}, fmt.Errorf("no commits found")
+	}
+
+	for _, commit := range commits {
 		if err := linter.LintCommit(commit); err != nil {
 			return tag.Tag{}, fmt.Errorf("invalid commit: %s [%s]", commit.String(), err.Error())
 		}

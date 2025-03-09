@@ -45,13 +45,19 @@ to quickly create a Cobra application.`,
 			log.Fatal(err)
 		}
 
+		log.Print(commit.String())
+
+		if dryRun, _ := cmd.Flags().GetBool("dry-run"); dryRun {
+			return
+		}
+
 		git.Commit(commit)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(commitgenCmd)
-
+	commitgenCmd.Flags().BoolP("dry-run", "d", false, "Run without committing")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

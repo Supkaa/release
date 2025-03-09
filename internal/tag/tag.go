@@ -16,6 +16,8 @@ type Tag struct {
 func Parse(tag string) Tag {
 	rule := `^v\d+\.\d+\.\d+$`
 	re := regexp.MustCompile(rule)
+	tag = strings.TrimSpace(tag)
+
 	if re.MatchString(tag) {
 		return parseTagWithPreffix(tag)
 	}
