@@ -18,6 +18,7 @@ func New(commit string) Commit {
 	return Commit{
 		Type:    parseType(commit),
 		Scope:   parseScope(commit),
+		Message: parseMessage(commit),
 		IsMerge: parseIsMerge(commit),
 	}
 }
@@ -57,9 +58,25 @@ func parseIsMerge(commit string) bool {
 }
 
 func parseScope(commit string) string {
+	matches := regexp.
+		MustCompile(`\(([^)]+)\)\:`).
+		FindString(commit)
+
+	if len(matches) > 2 {
+		return matches[1 : len(matches)-2]
+	}
+
 	return ""
 }
 
 func parseMessage(commit string) string {
+	matches := regexp.
+		MustCompile(`:\ (.*)$`).
+		FindString(commit)
+
+	if len(matches) > 2 {
+		return matches[2:]
+	}
+
 	return ""
 }
