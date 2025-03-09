@@ -108,3 +108,15 @@ func Commit(commit commit.Commit) {
 		log.Fatalf("fail to execute command: %s", err.Error())
 	}
 }
+
+func Tag(tag tag.Tag) {
+	cmd := exec.Command(
+		"git",
+		"tag",
+		tag.String(),
+	)
+
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("fail to execute command: %s", err.Error())
+	}
+}

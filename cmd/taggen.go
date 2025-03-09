@@ -6,9 +6,7 @@ package cmd
 import (
 	"log"
 
-	"github.com/Supkaa/release/internal/commit"
 	"github.com/Supkaa/release/internal/git"
-	"github.com/Supkaa/release/internal/tag"
 	"github.com/Supkaa/release/internal/taggen"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +28,7 @@ to quickly create a Cobra application.`,
 		}
 
 		log.Print(newTag.String())
+		git.Tag(newTag)
 	},
 }
 
@@ -45,12 +44,4 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// taggenCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-func getCommits(tag tag.Tag) []commit.Commit {
-	if tag.IsZero() {
-		return git.GetAllCommits()
-	}
-
-	return git.GetCommitsSinceTag(tag)
 }
