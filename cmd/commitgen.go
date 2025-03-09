@@ -12,6 +12,7 @@ import (
 
 	"github.com/Supkaa/release/internal/commit"
 	"github.com/Supkaa/release/internal/conventional/types"
+	"github.com/Supkaa/release/internal/git"
 	"github.com/Supkaa/release/internal/linter"
 	"github.com/spf13/cobra"
 )
@@ -27,9 +28,9 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// if !git.IsGitAddExecuted() {
-		// 	log.Fatal("git add not executed")
-		// }
+		if !git.IsGitAddExecuted() {
+			log.Fatal("git add not executed")
+		}
 
 		reader := bufio.NewReader(os.Stdin)
 		commit := commit.Commit{
@@ -43,7 +44,7 @@ to quickly create a Cobra application.`,
 			log.Fatal(err)
 		}
 
-		// git.Commit(commit)
+		git.Commit(commit)
 	},
 }
 

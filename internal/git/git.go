@@ -56,7 +56,7 @@ func Commit(commit commit.Commit) {
 		"git",
 		"commit",
 		"-m",
-		fmt.Sprintf(`'%s'`, commit.String()),
+		fmt.Sprintf(`%s`, commit.String()),
 	)
 
 	if err := cmd.Run(); err != nil {
