@@ -2,6 +2,7 @@ package commit
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 
 	"github.com/Supkaa/release/internal/conventional/types"
@@ -28,7 +29,21 @@ func Parse(commit string) Commit {
 		newCommit.Message = parseMessage(commit)
 	}
 
+	parse(commit)
 	return newCommit
+}
+
+func parse(commit string) {
+	var baseFormatRegex = regexp.MustCompile(`(?is)^(?:(?P<category>[^\(!:]+)(?:\((?P<scope>[^\)]+)\))?(?P<breaking>!)?: (?P<description>[^\n\r]+))(?P<remainder>.*)`)
+
+	matches := baseFormatRegex.FindStringSubmatch(commit)
+
+	log.Printf("%+v\n", matches)
+	for i, name := range baseFormatRegex.SubexpNames() {
+		if name != "" {
+			fmt.Printf("%s: %s\n", name, matches[i])
+		}
+	}
 }
 
 func (c Commit) String() string {
