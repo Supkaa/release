@@ -111,7 +111,7 @@ func parseFooters(rawFooter string) map[string]string {
 		currentKey = key
 
 		if existingValue, ok := footers[key]; ok {
-			value = fmt.Sprintf("%s,%s", existingValue, value)
+			value = fmt.Sprintf("%s\n%s", existingValue, value)
 		}
 
 		footers[key] = strings.TrimSpace(value)
@@ -165,10 +165,8 @@ func (c Commit) String() string {
 BREAKING CHANGE: {{.BreakingChange}}
 {{end}}`
 
-	// Парсим шаблон
 	t := template.Must(template.New("commit").Parse(tmpl))
 
-	// Выполняем шаблон
 	var buf bytes.Buffer
 	err := t.Execute(&buf, c)
 	if err != nil {
