@@ -1,7 +1,9 @@
 package commit
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"regexp"
 	"slices"
 	"strings"
@@ -146,20 +148,34 @@ func extractAndRemoveBreakingChanges(footers map[string]string) (string, map[str
 }
 
 func (c Commit) String() string {
-	str := ""
-	if c.Type != "" {
-		str = fmt.Sprintf("%s: ", c.Type)
+	if c.IsMerge || c.IsInitial {
+		return c.Message
 	}
 
-	if c.Scope != "" && str != "" {
-		str = fmt.Sprintf("%s(%s): ", c.Type, c.Scope)
+	const tmpl = `{{.Type}}{{if .Scope}}({{.Scope}}){{end}}: {{.Message}}
+{{if .Description}}
+{{.Description}}
+{{end}}
+{{if .Footers}}
+{{range $key, $value := .Footers}}
+{{$key}}: {{$value}}
+{{end}}
+{{end}}
+{{if .IsBreakingChange}}
+BREAKING CHANGE: {{.BreakingChange}}
+{{end}}`
+
+	// Парсим шаблон
+	t := template.Must(template.New("commit").Parse(tmpl))
+
+	// Выполняем шаблон
+	var buf bytes.Buffer
+	err := t.Execute(&buf, c)
+	if err != nil {
+		return ""
 	}
 
-	if c.Message != "" {
-		str = str + c.Message
-	}
-
-	return str
+	return strings.TrimSpace(buf.String())
 }
 
 func parseIsMerge(commit string) bool {
