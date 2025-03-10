@@ -27,6 +27,7 @@ to quickly create a Cobra application.`,
 			log.Fatal(err)
 		}
 
+		log.Printf("%#v", lastCommit)
 		if err := linter.LintCommit(lastCommit); err != nil {
 			log.Fatal(err)
 		}

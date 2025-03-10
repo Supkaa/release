@@ -2,18 +2,37 @@ package commit
 
 import (
 	"fmt"
-	"log"
 	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/Supkaa/release/internal/conventional/types"
 )
 
+var (
+	baseFormatRegex       = regexp.MustCompile(`(?is)^(?:(?P<type>[^\(!:]+)(?:\((?P<scope>[^\)]+)\))?(?P<breaking>!)?: (?P<message>[^\n\r]+))(?P<remainder>.*)`)
+	bodyFooterFormatRegex = regexp.MustCompile(`(?isU)^(?:(?P<description>.*))?(?P<footer>(?-U:(?:[\w\-]+(?:: | #).*|(?i:BREAKING CHANGE:.*)|(?i:BREAKING-CHANGE:.*))+))`)
+	footerFormatRegex     = regexp.MustCompile(`(?s)^(?P<footer>(?i:(?:[\w\-]+(?:: | #).*|(?i:BREAKING CHANGE:.*)|(?i:BREAKING-CHANGE:.*))+))`)
+)
+
+func regExMapper(match []string, expectedFormatRegex *regexp.Regexp, result map[string]string) {
+	for i, name := range expectedFormatRegex.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = strings.TrimSpace(match[i])
+		}
+	}
+}
+
 type Commit struct {
-	Type      types.CommitType
-	Scope     string
-	Message   string
-	IsMerge   bool
-	IsInitial bool
+	Type             types.CommitType
+	Scope            string
+	Message          string
+	Description      string
+	Footers          map[string]string
+	IsMerge          bool
+	IsInitial        bool
+	IsBreakingChange bool
+	BreakingChange   string
 }
 
 func Parse(commit string) Commit {
@@ -23,27 +42,107 @@ func Parse(commit string) Commit {
 		Message:   commit,
 	}
 
-	if !newCommit.IsMerge && !newCommit.IsInitial {
-		newCommit.Type = parseType(commit)
-		newCommit.Scope = parseScope(commit)
-		newCommit.Message = parseMessage(commit)
+	if newCommit.IsMerge || newCommit.IsInitial {
+		return newCommit
 	}
 
-	parse(commit)
-	return newCommit
+	return deepParse(commit)
 }
 
-func parse(commit string) {
-	var baseFormatRegex = regexp.MustCompile(`(?is)^(?:(?P<category>[^\(!:]+)(?:\((?P<scope>[^\)]+)\))?(?P<breaking>!)?: (?P<description>[^\n\r]+))(?P<remainder>.*)`)
-
-	matches := baseFormatRegex.FindStringSubmatch(commit)
-
-	log.Printf("%+v\n", matches)
-	for i, name := range baseFormatRegex.SubexpNames() {
-		if name != "" {
-			fmt.Printf("%s: %s\n", name, matches[i])
+func deepParse(commit string) Commit {
+	// isBreakingChange := false
+	match := baseFormatRegex.FindStringSubmatch(commit)
+	if len(match) == 0 {
+		return Commit{
+			Message: commit,
 		}
 	}
+
+	result := make(map[string]string)
+	regExMapper(match, baseFormatRegex, result)
+
+	// split the remainder into body & footer
+	match = bodyFooterFormatRegex.FindStringSubmatch(result["remainder"])
+	if len(match) > 0 {
+		regExMapper(match, bodyFooterFormatRegex, result)
+	} else {
+		result["description"] = result["remainder"]
+	}
+
+	breakingChangesText, footers := extractAndRemoveBreakingChanges(parseFooters(result["footer"]))
+
+	return Commit{
+		Type:             types.CommitType(result["type"]),
+		Scope:            result["scope"],
+		Message:          result["message"],
+		Description:      result["description"],
+		Footers:          footers,
+		IsBreakingChange: result["breaking"] == "!" || breakingChangesText != "",
+		BreakingChange:   breakingChangesText,
+	}
+}
+
+func parseFooters(rawFooter string) map[string]string {
+	if rawFooter == "" {
+		return nil
+	}
+
+	footers := make(map[string]string)
+	currentKey := ""
+
+	for _, line := range strings.Split(rawFooter, "\n") {
+		line = strings.TrimSpace(line)
+
+		if line == "" {
+			continue
+		}
+
+		matches := footerFormatRegex.FindStringSubmatch(line)
+		if len(matches) == 0 {
+			footers[currentKey] += fmt.Sprintf("\n%s", line)
+			continue
+		}
+
+		l := strings.Split(matches[0], ": ")
+		key := l[0]
+		value := l[1]
+		currentKey = key
+
+		if existingValue, ok := footers[key]; ok {
+			value = fmt.Sprintf("%s,%s", existingValue, value)
+		}
+
+		footers[key] = strings.TrimSpace(value)
+	}
+
+	if len(footers) == 0 {
+		footers = nil
+	}
+
+	return footers
+}
+
+func extractAndRemoveBreakingChanges(footers map[string]string) (string, map[string]string) {
+	if footers == nil {
+		return "", nil
+	}
+
+	breakingChangesText := ""
+
+	for key, value := range footers {
+		if !slices.Contains([]string{"BREAKING CHANGE", "BREAKING-CHANGE"}, key) {
+			continue
+		}
+
+		breakingChangesText = fmt.Sprintf("%s\n%s", breakingChangesText, value)
+		delete(footers, key)
+	}
+
+	if len(footers) == 0 {
+		footers = nil
+	}
+
+	return strings.TrimSpace(breakingChangesText), footers
 }
 
 func (c Commit) String() string {
@@ -63,17 +162,6 @@ func (c Commit) String() string {
 	return str
 }
 
-func parseType(commit string) types.CommitType {
-	matches := regexp.
-		MustCompile(`([\w\s]+)[:(]`).
-		FindString(commit)
-
-	if len(matches) > 2 {
-		return matches[:len(matches)-1]
-	}
-	return matches
-}
-
 func parseIsMerge(commit string) bool {
 	return regexp.
 		MustCompile(`(?i)^merge`).
@@ -82,28 +170,4 @@ func parseIsMerge(commit string) bool {
 
 func parseIsInitial(commit string) bool {
 	return commit == "Initial commit"
-}
-
-func parseScope(commit string) string {
-	matches := regexp.
-		MustCompile(`\(([^)]+)\)\:`).
-		FindString(commit)
-
-	if len(matches) > 2 {
-		return matches[1 : len(matches)-2]
-	}
-
-	return ""
-}
-
-func parseMessage(commit string) string {
-	matches := regexp.
-		MustCompile(`:\ (.*)$`).
-		FindString(commit)
-
-	if len(matches) > 2 {
-		return matches[2:]
-	}
-
-	return ""
 }

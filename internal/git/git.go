@@ -15,7 +15,7 @@ func GetLatestCommit() (commit.Commit, error) {
 		"git",
 		"log",
 		"-1",
-		`--pretty=format:%s`,
+		`--pretty=format:%B`,
 	)
 	stdout, err := cmd.Output()
 	if err != nil {
