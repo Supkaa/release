@@ -12,6 +12,7 @@ import (
 	"github.com/Supkaa/release/internal/conventional/types"
 	"github.com/Supkaa/release/internal/git"
 	"github.com/Supkaa/release/internal/linter"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
@@ -71,27 +72,46 @@ const (
 )
 
 type model struct {
-	stage        stage
-	cursor       int
-	inputBuffer  string
-	errorMessage string
-	newCommit    commit.Commit
-	isDryRun     bool
+	stage                          stage
+	cursor                         int
+	scopeInput                     textinput.Model
+	messageInput                   textinput.Model
+	descriptionInput               textinput.Model
+	breakingChangeDescriptionInput textinput.Model
+	errorMessage                   string
+	newCommit                      commit.Commit
+	isDryRun                       bool
 }
 
 func initialModel(idDryRun bool) model {
+	scopeInput := textinput.New()
+	scopeInput.Placeholder = "Scope"
+	scopeInput.Focus()
+
+	messageInput := textinput.New()
+	messageInput.Placeholder = "Short message"
+
+	descriptionInput := textinput.New()
+	descriptionInput.Placeholder = "Long description"
+
+	breakingChangeDescriptionInput := textinput.New()
+	breakingChangeDescriptionInput.Placeholder = "Breaking change description"
+
 	return model{
-		stage:        stageSelectType,
-		cursor:       0,
-		inputBuffer:  "",
-		errorMessage: "",
-		newCommit:    commit.Commit{},
-		isDryRun:     idDryRun,
+		stage:                          stageSelectType,
+		cursor:                         0,
+		scopeInput:                     scopeInput,
+		messageInput:                   messageInput,
+		descriptionInput:               descriptionInput,
+		breakingChangeDescriptionInput: breakingChangeDescriptionInput,
+		errorMessage:                   "",
+		newCommit:                      commit.Commit{},
+		isDryRun:                       idDryRun,
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return textinput.Blink
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -176,84 +196,80 @@ func (m model) viewSelectType() string {
 }
 
 func (m model) updateEnterScope(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "enter":
-		m.newCommit.Scope = strings.TrimSpace(m.inputBuffer)
-		m.inputBuffer = ""
+		m.newCommit.Scope = strings.TrimSpace(m.scopeInput.Value())
 		m.stage = stageEnterMessage
-	case "backspace":
-		if len(m.inputBuffer) > 0 {
-			m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
-		}
-	default:
-		if len(msg.String()) == 1 {
-			m.inputBuffer += msg.String()
-		}
+		m.scopeInput.Blur()
+		m.messageInput.Focus()
+		return m, textinput.Blink
 	}
-	return m, nil
+
+	m.scopeInput, cmd = m.scopeInput.Update(msg)
+
+	return m, cmd
 }
 
 func (m model) viewEnterScope() string {
 	s := "Enter scope (optional):\n\n"
-	s += fmt.Sprintf("> %s\n", m.inputBuffer)
-	s += "\nPress Enter to continue, ctrl+c to quit"
+	s += m.scopeInput.View()
+	s += "\n\nPress Enter to continue, ctrl+c to quit"
 	return s
 }
 
 func (m model) updateEnterMessage(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "enter":
-		m.newCommit.Message = strings.TrimSpace(m.inputBuffer)
-		m.inputBuffer = ""
+		m.newCommit.Message = strings.TrimSpace(m.messageInput.Value())
 		m.stage = stageEnterDescription
-	case "backspace":
-		if len(m.inputBuffer) > 0 {
-			m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
-		}
-	default:
-		if len(msg.String()) == 1 {
-			m.inputBuffer += msg.String()
-		}
+		m.messageInput.Blur()
+		m.descriptionInput.Focus()
+		return m, textinput.Blink
 	}
 
-	return m, nil
+	m.messageInput, cmd = m.messageInput.Update(msg)
+
+	return m, cmd
 }
 
 func (m model) viewEnterMessage() string {
 	s := "Enter short description:\n\n"
-	s += fmt.Sprintf("> %s\n", m.inputBuffer)
-	s += "\nPress Enter to continue, ctrl+c to quit"
+	s += m.messageInput.View()
+	s += "\n\nPress Enter to continue, ctrl+c to quit"
 	return s
 }
 
 func (m model) updateEnterDescription(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "enter":
-		m.newCommit.Description = strings.TrimSpace(m.inputBuffer)
-		m.inputBuffer = ""
+		m.newCommit.Description = strings.TrimSpace(m.descriptionInput.Value())
 		m.stage = stageIsBreakingChange
-	case "backspace":
-		if len(m.inputBuffer) > 0 {
-			m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
-		}
-	default:
-		if len(msg.String()) == 1 {
-			m.inputBuffer += msg.String()
-		}
+		m.descriptionInput.Blur()
+		m.breakingChangeDescriptionInput.Focus()
+		return m, textinput.Blink
 	}
-	return m, nil
+
+	m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+
+	return m, cmd
 }
 
 func (m model) viewEnterDescription() string {
 	s := "Enter long description (optional):\n\n"
-	s += fmt.Sprintf("> %s\n", m.inputBuffer)
-	s += "\nPress Enter to continue, ctrl+c to quit"
+	s += m.descriptionInput.View()
+	s += "\n\nPress Enter to continue, ctrl+c to quit"
 	return s
 }
 
@@ -280,30 +296,27 @@ func (m model) viewIsBreakingChange() string {
 }
 
 func (m model) updateEnterBreakingChangeDescription(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "enter":
-		m.newCommit.BreakingChange = strings.TrimSpace(m.inputBuffer)
-		m.inputBuffer = ""
+		m.newCommit.BreakingChange = strings.TrimSpace(m.breakingChangeDescriptionInput.Value())
 		m.stage = stageConfirm
-	case "backspace":
-		if len(m.inputBuffer) > 0 {
-			m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
-		}
-	default:
-		if len(msg.String()) == 1 {
-			m.inputBuffer += msg.String()
-		}
+		m.breakingChangeDescriptionInput.Blur()
+		return m, textinput.Blink
 	}
 
-	return m, nil
+	m.breakingChangeDescriptionInput, cmd = m.breakingChangeDescriptionInput.Update(msg)
+
+	return m, cmd
 }
 
 func (m model) viewEnterBreakingChangeDescription() string {
 	s := "Enter breaking change description:\n\n"
-	s += fmt.Sprintf("> %s\n", m.inputBuffer)
-	s += "\nPress Enter to continue, ctrl+c to quit"
+	s += m.breakingChangeDescriptionInput.View()
+	s += "\n\nPress Enter to continue, ctrl+c to quit"
 	return s
 }
 
